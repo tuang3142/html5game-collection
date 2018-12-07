@@ -1,4 +1,4 @@
-# HTML game collection
+# HTML5 game collection
 
 A collection of games written in HTML5
 
