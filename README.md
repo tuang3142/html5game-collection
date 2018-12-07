@@ -5,7 +5,7 @@ A collection of games written in HTML5
 ## pingpong
 
 [repo](https://github.com/daenylio/pingpong) \
-[play](https://github.com/daenylio/pingpong)
+[play](https://ping-lil-pong.herokuapp.com/)
 
 ## breakthough
 
