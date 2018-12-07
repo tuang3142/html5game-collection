@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>HTML5 Game</title>
+</head>
+
+<body>
+<p>Lets play</p>
+<canvas id="gameCanvas"></canvas>
+
+<script>
+
+var canvas, canvasContext;
+
+var ballX = 600;
+var ballY = 600;
+var ballSpeedX = 0;
+var ballSpeedY = -1.1;
+var lifeRemain = 3;
+const BALL_RADIUS = 6;
+
+const PADDLE_WIDTH = 100;
+const PADDLE_HEIGH = 15;
+const PADDLE_PADDING_BOTTOM = 30;
+var paddleX;
+
+var mouseX = 600;
+var mouseY = 600;
+
+const BRICK_WIDTH = 80;
+const BRICK_HEIGHT = 20;
+const BRICK_GAP = 2;
+const BRICK_COLS = 10;
+const BRICK_ROWS = 7;
+var brickCount = BRICK_COLS * (BRICK_ROWS - 3);
+var brickGrid = new Array(BRICK_COLS * BRICK_ROWS);
+
+window.onload = function() {
+    canvas = document.getElementById('gameCanvas');
+    canvas.width = BRICK_COLS * BRICK_WIDTH + BRICK_GAP;
+    canvas.height = 700;
+    canvasContext = canvas.getContext('2d');
+
+    brickReset();
+
+    const FRAMES_PER_SECOND = 120000;
+    setInterval(function() {
+        move();
+        drawAll();
+    }, 1000/FRAMES_PER_SECOND); // what is advantage, disadvantage of this method?
+    canvas.addEventListener('mousemove', updatePaddleX);    
+
+}
+
+function brickReset() {
+    lifeRemain = 3;
+    brickCount = (BRICK_ROWS - 3) * BRICK_COLS;
+    
+    for(var i = 0; i < BRICK_COLS * BRICK_ROWS; i++) {
+        brickGrid[i] = true;
+        if(i < 3 * BRICK_COLS)
+            brickGrid[i] = false;
+    } // end of for each brick
+} // end of func
+
+function move() {
+    ballX += ballSpeedX;
+    ballY += ballSpeedY;
+
+    // check ball go off border
+    if(ballX < 0 || ballX > canvas.width ) {
+        ballSpeedX *= -1;
+    }
+    if(ballY < 0) {
+        ballSpeedY *= -1;
+    }
+    if(ballY >= canvas.height) {
+        ballSpeedY *= -1;
+        ballReset();
+        lifeRemain --;
+        if(lifeRemain <= 0) {
+            brickReset();
+        }
+    }
+
+    //check ball to hit paddle
+    var paddleTopEdgeY = canvas.height - PADDLE_PADDING_BOTTOM;
+    var paddleBottomEdgeY = paddleTopEdgeY + PADDLE_HEIGH;
+    var paddleLeftEdgeX = paddleX;
+    var paddleRightEdgeX = paddleLeftEdgeX + PADDLE_WIDTH;
+    if(
+        ballX > paddleLeftEdgeX &&
+        ballX < paddleRightEdgeX &&
+        ballY > paddleTopEdgeY &&
+        ballY < paddleBottomEdgeY &&
+        ballSpeedY > 0
+    ) {
+        ballSpeedY *= -1;
+        var centerOfPaddleX = paddleLeftEdgeX + PADDLE_WIDTH/2;
+        var ballDistFromPaddleCenterX = ballX - centerOfPaddleX;
+        ballSpeedX = ballDistFromPaddleCenterX * Math.PI / 100;
+    }
+
+    //check ball to hit the brick
+    var ballBrickX = Math.floor(ballX / BRICK_WIDTH);
+    var ballBrickY = Math.floor(ballY / BRICK_HEIGHT);
+    var brickID = ballBrickY * BRICK_COLS + ballBrickX;
+    if(
+        ballBrickX >= 0 && ballBrickX < BRICK_COLS &&
+        ballBrickY >= 0 && ballBrickY < BRICK_ROWS
+    ) {
+        if(brickGrid[brickID]) {
+            brickGrid[brickID] = false;
+            brickCount --;
+            var prevBrickX = Math.floor((ballX - ballSpeedX) / BRICK_WIDTH);
+            var prevBrickY = Math.floor((ballY - ballSpeedY) / BRICK_HEIGHT);
+            //change the dir of the ball, advanced way, check detail on the book
+            if(prevBrickX != ballBrickX) {
+                ballSpeedX *= -1;
+            }
+            if(prevBrickY != ballBrickY) {
+                ballSpeedY *= -1;
+            }
+        } // end of if brickGrid[id]
+    } // end of if the ball coordinate is valid
+}
+
+function ballReset() {
+    ballX = Math.floor(Math.random() * (canvas.width / 2) + 1);
+    ballY = Math.floor(Math.random() * (canvas.height / 2) + 1);
+}
+
+function drawAll() {
+    drawRect(0,0, canvas.width,canvas.height, '#3264B0'); // draw main board
+    drawRect(paddleX,canvas.height - PADDLE_PADDING_BOTTOM,
+             PADDLE_WIDTH,PADDLE_HEIGH, '#000'); // draw paddle
+    drawCircle(ballX,ballY, '#000'); // draw ball
+    drawBricks(BRICK_ROWS); // draw the hole grid of bricks
+
+    var mouseBrickX = Math.floor(mouseX / BRICK_WIDTH);
+    var mouseBrickY = Math.floor(mouseY / BRICK_HEIGHT);
+    drawTextBox(mouseBrickX + ', ' + mouseBrickY, mouseX, mouseY, '000'); //draw coordinate of mousemove
+    drawTextBox('You have ' + lifeRemain + ' chances left to win', 10, 10, 'fff');
+    drawTextBox(brickCount + ' bricks to go', 10, 30, 'fff');
+}
+
+function drawRect(topLeftX,topLeftY, rectWidth,rectHeight, fillColor) {
+    canvasContext.fillStyle = fillColor;
+    canvasContext.fillRect(topLeftX,topLeftY, rectWidth,rectHeight);
+}
+
+function drawCircle(centerX,centerY, fillColor) {
+    canvasContext.fillStyle = fillColor;
+    canvasContext.beginPath(); // we will comeback to this later
+    canvasContext.arc(ballX,ballY, BALL_RADIUS, 0, Math.PI * 2, true);
+    canvasContext.fill();
+}
+
+function drawBricks(brickRow) {
+    for(var eachRow = 0; eachRow < BRICK_ROWS; eachRow++) {
+        for(var eachCol = 0; eachCol < BRICK_COLS; eachCol++) {
+            var brickID = eachRow * BRICK_COLS + eachCol;
+            if(brickGrid[brickID]) { 
+                drawRect(eachCol * BRICK_WIDTH + BRICK_GAP, (eachRow)* BRICK_HEIGHT + BRICK_GAP, BRICK_WIDTH - BRICK_GAP, BRICK_HEIGHT - BRICK_GAP, 'black');
+            } // end of if brickGrid[id]
+        } // end of for eachCol
+    } // end of for eachRow
+}
+
+function drawTextBox(content, textX, textY, fillColor) {
+    canvasContext.fillStyle = fillColor;
+    canvasContext.fillText(content, textX, textY);
+}
+
+function updatePaddleX(evt) { // callback function
+    var rect = canvas.getBoundingClientRect();
+    var root = document.documentElement;
+    
+    mouseX = evt.clientX - rect.left - root.scrollLeft;
+    mouseY = evt.clientY - rect.top - root.scrollTop;
+
+    paddleX = mouseX - PADDLE_WIDTH/2;
+}
+
+</script>    
+
+</body>
+</html>
